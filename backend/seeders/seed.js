@@ -17,14 +17,14 @@ async function seed() {
     await Journal.deleteMany({});
 
     // Hash password
-    const userPassword = await bcrypt.hash("tes", 10);
-    const adminPassword = await bcrypt.hash("admin123", 10);
+    const userPassword = await bcrypt.hash("user1234", 10);
+    const adminPassword = await bcrypt.hash("admin1234", 10);
 
     // Insert users
     const users = await User.insertMany([
       {
-        username: "tes",
-        email: "test@gmail.com",
+        username: "user",
+        email: "user@gmail.com",
         password: userPassword,
         role: "user",
       },

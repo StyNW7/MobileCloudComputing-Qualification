@@ -4,7 +4,7 @@ import '../models/journal.dart';
 
 class ApiService {
   // Untuk Android emulator gunakan 10.0.2.2
-  static const String baseUrl = 'http://localhost:3000';
+  static const String baseUrl = 'http://10.0.2.2:5000/api/journals';
 
   static Future<List<Journal>> fetchJournals() async {
     final res = await http.get(Uri.parse('$baseUrl/journals'));
