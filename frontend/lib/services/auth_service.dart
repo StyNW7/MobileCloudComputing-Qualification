@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
-  final String baseUrl = "http://10.0.2.2:5000/api"; // ganti kalau pakai ip lain
+  
+  // final String baseUrl = "http://127.0.0.1:3000/api";
+  final String baseUrl = dotenv.env['BASE_URL_LOCAL']!;
 
   Future<bool> login(String email, String password) async {
     final response = await http.post(

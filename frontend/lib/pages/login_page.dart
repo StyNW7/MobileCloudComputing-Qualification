@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
+import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,6 +12,8 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  bool loading = false;
+  String? errorMessage;
 
   @override
   void dispose() {
@@ -34,12 +36,30 @@ class _LoginPageState extends State<LoginPage> {
     return null;
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      Provider.of<AuthProvider>(context, listen: false).login(_emailCtrl.text.trim());
-      Navigator.pushReplacementNamed(context, '/home');
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      loading = true;
+      errorMessage = null;
+    });
+
+    final success = await AuthService().login(
+      _emailCtrl.text.trim(),
+      _passCtrl.text.trim(),
+    );
+
+    setState(() => loading = false);
+
+    if (success && mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
     } else {
-      // form shows errors
+      setState(() {
+        errorMessage = "Email atau password salah!";
+      });
     }
   }
 
@@ -52,31 +72,54 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           children: [
             const SizedBox(height: 24),
-            const FlutterLogo(size: 80),
+            // ✅ Custom Logo Bisnis
+            Image.asset(
+              "assets/logo.png",
+              height: 100,
+            ),
             const SizedBox(height: 12),
-            const Text('Welcome to JourNWal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const Text(
+              'Welcome to JourNWal',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 24),
+
+            if (errorMessage != null)
+              Text(
+                errorMessage!,
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+              ),
+
+            const SizedBox(height: 12),
+
             Form(
               key: _formKey,
-              child: Column(children: [
-                TextFormField(
-                  controller: _emailCtrl,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  validator: _validateEmail,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _passCtrl,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  obscureText: true,
-                  validator: _validatePassword,
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(onPressed: _submit, child: const Text('Login')),
-                ),
-              ]),
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _emailCtrl,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    validator: _validateEmail,
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _passCtrl,
+                    decoration: const InputDecoration(labelText: 'Password'),
+                    obscureText: true,
+                    validator: _validatePassword,
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: loading ? null : _submit,
+                      child: loading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('Login'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -6,8 +6,10 @@ import 'providers/journal_provider.dart';
 import 'providers/theme_provider.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
+  await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized();
   final initialMode = await ThemeService.getSavedThemeMode();
   runApp(MultiProvider(
