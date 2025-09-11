@@ -1,3 +1,4 @@
+// models/user.model.js
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
@@ -21,7 +22,7 @@ const userSchema = new mongoose.Schema({
     required: true,
     default: "user",
   },
-});
+}, { timestamps: true }); // Added timestamps for consistency
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

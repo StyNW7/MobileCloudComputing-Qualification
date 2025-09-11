@@ -48,13 +48,22 @@ export const loginUser = async (req, res) => {
     if (!user) return res.status(400).json({ message: "invalid credentials" });
 
     const isMatch = await user.matchPassword(password);
-    if (!isMatch)
-      return res.status(400).json({ message: "invalid credentials" });
+    if (!isMatch) return res.status(400).json({ message: "invalid credentials" });
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.json({ token });
+    
+    // Include user info in the response
+    res.json({ 
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: "Error logging in", error: error.message });
   }
