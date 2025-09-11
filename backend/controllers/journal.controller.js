@@ -26,9 +26,11 @@ export const createJournal = async (req, res) => {
 // Read All
 export const getJournals = async (req, res) => {
   try {
-    const journals = await Journal.find({ author: req.user.userId }).sort({
-      createdAt: -1,
-    });
+    const journals = await Journal.find({ author: req.user.userId })
+      .populate('author', 'username email') // Populate author info
+      .sort({
+        createdAt: -1,
+      });
     res.status(200).json(journals);
   } catch (error) {
     console.error("Error fetching journals:", error);
@@ -36,13 +38,13 @@ export const getJournals = async (req, res) => {
   }
 };
 
-// Read One
+// Read One - Updated to populate author information
 export const getJournalById = async (req, res) => {
   try {
     const journal = await Journal.findOne({
       _id: req.params.id,
       author: req.user.userId,
-    });
+    }).populate('author', 'username email'); // Populate author info
 
     if (!journal) {
       return res.status(404).json({ message: "Journal not found" });
