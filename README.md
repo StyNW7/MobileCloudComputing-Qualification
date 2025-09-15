@@ -11,10 +11,10 @@ flutter run
 
 ```
 BASE_URL_LOCAL=http://127.0.0.1:3000/api
-BASE_URL_PROD=
+BASE_URL_PROD=https://journwal-backend.vercel.app/api (for testing)
 ```
 
-Backend:
+Backend (already deployed on Vercel):
 
 ```
 cd backend
