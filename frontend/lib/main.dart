@@ -4,6 +4,7 @@ import 'utils/theme_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/journal_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/comment_provider.dart';
 import 'pages/login_page.dart';
 import 'pages/home_page.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -19,6 +20,10 @@ void main() async {
         create: (context) => JournalProvider(Provider.of<AuthProvider>(context, listen: false)),
         update: (context, auth, previousJournal) => 
             JournalProvider(auth)..loadJournals(),
+      ),
+      ChangeNotifierProxyProvider<AuthProvider, CommentProvider>(
+        create: (context) => CommentProvider(Provider.of<AuthProvider>(context, listen: false)),
+        update: (context, auth, previous) => CommentProvider(auth),
       ),
       ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode)),
     ],

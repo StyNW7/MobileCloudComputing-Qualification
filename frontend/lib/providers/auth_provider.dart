@@ -53,4 +53,13 @@ class AuthProvider with ChangeNotifier {
   Future<String?> getToken() async {
     return await _authService.getToken();
   }
+
+  Future<String?> getUserId() async {
+    return await _authService.getUserId();
+  }
+
+  Future<String?> getUsername() async {
+    return await _authService.getUsername();
+  }
+
 }
