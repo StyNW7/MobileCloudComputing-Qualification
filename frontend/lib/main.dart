@@ -15,7 +15,11 @@ void main() async {
   runApp(MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => AuthProvider()),
-      ChangeNotifierProvider(create: (_) => JournalProvider()),
+       ChangeNotifierProxyProvider<AuthProvider, JournalProvider>(
+        create: (context) => JournalProvider(Provider.of<AuthProvider>(context, listen: false)),
+        update: (context, auth, previousJournal) => 
+            JournalProvider(auth)..loadJournals(),
+      ),
       ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode)),
     ],
     child: const MyApp(),

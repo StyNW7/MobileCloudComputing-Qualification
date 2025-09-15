@@ -8,7 +8,13 @@ class JournalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preview = journal.content.length > 80 ? '${journal.content.substring(0, 77)}...' : journal.content;
+    final preview = journal.content.length > 80 
+        ? '${journal.content.substring(0, 77)}...' 
+        : journal.content;
+    
+    // Use authorName if available, otherwise use authorId
+    final authorDisplay = journal.authorName ?? 'User ${journal.authorId.substring(0, 6)}';
+    
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       child: ListTile(
@@ -20,7 +26,10 @@ class JournalCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(preview),
             const SizedBox(height: 6),
-            Text('${journal.author} • ${journal.date.toLocal().toString().split('.').first}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text(
+              '$authorDisplay • ${journal.createdAt.toLocal().toString().split('.').first}', 
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
           ],
         ),
       ),

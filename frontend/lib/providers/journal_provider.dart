@@ -1,91 +1,274 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../models/journal.dart';
-import '../models/comment.dart';
-import '../services/api_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class JournalProvider extends ChangeNotifier {
+import '../models/journal.dart';
+import 'auth_provider.dart';
+
+class JournalProvider with ChangeNotifier {
+  final AuthProvider auth;
+  
+  JournalProvider(this.auth);
+  
   List<Journal> _journals = [];
-  Map<String, List<CommentModel>> _comments = {};
-  bool loading = false;
+  bool _loading = false;
+  String _error = '';
+  int _totalCount = 0;
 
   List<Journal> get journals => _journals;
-  List<CommentModel> commentsFor(String journalId) => _comments[journalId] ?? [];
+  bool get loading => _loading;
+  String get error => _error;
+  int get totalCount => _totalCount;
+
+  void clearError() {
+    _error = '';
+    notifyListeners();
+  }
 
   Future<void> loadJournals() async {
-    loading = true;
+    _loading = true;
+    _error = '';
     notifyListeners();
+    
     try {
-      final data = await ApiService.fetchJournals();
-      _journals = data;
+      final token = await auth.getToken();
+      if (token == null || token.isEmpty) {
+        throw Exception('Not authenticated - please login again');
+      }
+
+      print('Loading journals with token: ${token.substring(0, 20)}...');
+      
+      final response = await http.get(
+        Uri.parse('${auth.baseUrl}/journals'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        
+        List<dynamic> journalsData;
+        
+        // Handle both response formats
+        if (responseData is Map<String, dynamic>) {
+          // New format with count and journals
+          _totalCount = responseData['count'] ?? 0;
+          journalsData = responseData['journals'] ?? [];
+        } else if (responseData is List) {
+          // Old format - direct array
+          journalsData = responseData;
+          _totalCount = journalsData.length;
+        } else {
+          throw Exception('Unexpected response format');
+        }
+        
+        _journals = journalsData.map((json) {
+          try {
+            return Journal.fromJson(json);
+          } catch (e) {
+            print('Error parsing journal: $e');
+            print('Journal data: $json');
+            rethrow;
+          }
+        }).toList();
+        
+        _error = '';
+        print('Successfully loaded ${_journals.length} journals');
+      } else if (response.statusCode == 401) {
+        _error = 'Authentication failed. Please login again.';
+        // Optionally trigger logout
+        await auth.logout();
+      } else {
+        _error = 'Failed to load journals: ${response.statusCode}';
+        if (response.body.isNotEmpty) {
+          try {
+            final errorData = json.decode(response.body);
+            _error = errorData['message'] ?? _error;
+          } catch (e) {
+            _error += ' - ${response.body}';
+          }
+        }
+      }
     } catch (e) {
-      // fallback sample data jika API belum tersedia
-      _journals = [
-        Journal(
-          id: 'sample-1',
-          title: 'Hari Pertama Journaling',
-          content: 'Mulai journaling hari ini. Menulis apa yang saya syukuri...',
-          date: DateTime.now().subtract(const Duration(days: 1)),
-          author: 'user',
-        ),
-        Journal(
-          id: 'sample-2',
-          title: 'Refleksi Minggu',
-          content: 'Minggu ini berjalan baik, project hampir selesai...',
-          date: DateTime.now(),
-          author: 'user',
-        ),
-      ];
+      _error = 'Error loading journals: $e';
+      print('Error in loadJournals: $e');
     } finally {
-      loading = false;
+      _loading = false;
       notifyListeners();
     }
   }
-
-  Future<void> addJournal({required String title, required String content, required String author}) async {
-    final j = Journal(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      content: content,
-      date: DateTime.now(),
-      author: author,
-    );
-    // coba ke API, jika gagal simpan lokal
-    try {
-      final created = await ApiService.createJournal(j);
-      _journals.insert(0, created);
-    } catch (e) {
-      _journals.insert(0, j);
+  
+  Future<bool> addJournal(String title, String content) async {
+    if (title.trim().isEmpty || content.trim().isEmpty) {
+      _error = 'Title and content cannot be empty';
+      notifyListeners();
+      return false;
     }
-    notifyListeners();
-  }
 
-  Future<void> updateJournal(Journal newJournal) async {
     try {
-      final updated = await ApiService.updateJournal(newJournal);
-      final idx = _journals.indexWhere((e) => e.id == updated.id);
-      if (idx != -1) _journals[idx] = updated;
+      final token = await auth.getToken();
+      if (token == null || token.isEmpty) {
+        _error = 'Not authenticated - please login again';
+        notifyListeners();
+        return false;
+      }
+      
+      final response = await http.post(
+        Uri.parse('${auth.baseUrl}/journals'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'title': title.trim(),
+          'content': content.trim(),
+        }),
+      );
+      
+      print('Add journal response: ${response.statusCode}');
+      print('Add journal body: ${response.body}');
+      
+      if (response.statusCode == 201) {
+        await loadJournals(); // Reload the list
+        _error = '';
+        return true;
+      } else if (response.statusCode == 401) {
+        _error = 'Authentication failed. Please login again.';
+        await auth.logout();
+        notifyListeners();
+        return false;
+      } else {
+        try {
+          final errorData = json.decode(response.body);
+          _error = errorData['message'] ?? 'Failed to add journal';
+        } catch (e) {
+          _error = 'Failed to add journal: ${response.statusCode}';
+        }
+        notifyListeners();
+        return false;
+      }
     } catch (e) {
-      final idx = _journals.indexWhere((e) => e.id == newJournal.id);
-      if (idx != -1) _journals[idx] = newJournal;
+      _error = 'Error adding journal: $e';
+      print('Error in addJournal: $e');
+      notifyListeners();
+      return false;
     }
-    notifyListeners();
   }
+  
+  Future<bool> updateJournal(String id, String title, String content) async {
+    if (title.trim().isEmpty || content.trim().isEmpty) {
+      _error = 'Title and content cannot be empty';
+      notifyListeners();
+      return false;
+    }
 
-  Future<void> deleteJournal(String id) async {
     try {
-      await ApiService.deleteJournal(id);
-      _journals.removeWhere((e) => e.id == id);
+      final token = await auth.getToken();
+      if (token == null || token.isEmpty) {
+        _error = 'Not authenticated - please login again';
+        notifyListeners();
+        return false;
+      }
+      
+      final response = await http.put(
+        Uri.parse('${auth.baseUrl}/journals/$id'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'title': title.trim(),
+          'content': content.trim(),
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        await loadJournals(); // Reload the list
+        _error = '';
+        return true;
+      } else if (response.statusCode == 401) {
+        _error = 'Authentication failed. Please login again.';
+        await auth.logout();
+        notifyListeners();
+        return false;
+      } else if (response.statusCode == 404) {
+        _error = 'Journal not found';
+        notifyListeners();
+        return false;
+      } else {
+        try {
+          final errorData = json.decode(response.body);
+          _error = errorData['message'] ?? 'Failed to update journal';
+        } catch (e) {
+          _error = 'Failed to update journal: ${response.statusCode}';
+        }
+        notifyListeners();
+        return false;
+      }
     } catch (e) {
-      _journals.removeWhere((e) => e.id == id);
+      _error = 'Error updating journal: $e';
+      notifyListeners();
+      return false;
     }
-    notifyListeners();
+  }
+  
+  Future<bool> deleteJournal(String id) async {
+    try {
+      final token = await auth.getToken();
+      if (token == null || token.isEmpty) {
+        _error = 'Not authenticated - please login again';
+        notifyListeners();
+        return false;
+      }
+      
+      final response = await http.delete(
+        Uri.parse('${auth.baseUrl}/journals/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        await loadJournals(); // Reload the list
+        _error = '';
+        return true;
+      } else if (response.statusCode == 401) {
+        _error = 'Authentication failed. Please login again.';
+        await auth.logout();
+        notifyListeners();
+        return false;
+      } else if (response.statusCode == 404) {
+        _error = 'Journal not found';
+        notifyListeners();
+        return false;
+      } else {
+        try {
+          final errorData = json.decode(response.body);
+          _error = errorData['message'] ?? 'Failed to delete journal';
+        } catch (e) {
+          _error = 'Failed to delete journal: ${response.statusCode}';
+        }
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _error = 'Error deleting journal: $e';
+      notifyListeners();
+      return false;
+    }
   }
 
-  void addComment(String journalId, CommentModel comment) {
-    _comments.putIfAbsent(journalId, () => []).add(comment);
-    notifyListeners();
+  // Helper method to get a single journal by ID
+  Journal? getJournalById(String id) {
+    try {
+      return _journals.firstWhere((journal) => journal.id == id);
+    } catch (e) {
+      return null;
+    }
   }
-
-  String prettyDate(DateTime d) => DateFormat.yMMMd().add_Hm().format(d);
 }

@@ -1,0 +1,38 @@
+{
+	"info": {
+		"_postman_id": "ae407d97-21de-4b98-836e-80a6b3da8656",
+		"name": "Journal",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "35383957",
+		"_collection_link": "https://www.postman.com/xstynwx/workspace/journwal/collection/35383957-ae407d97-21de-4b98-836e-80a6b3da8656?action=share&source=collection_link&creator=35383957"
+	},
+	"item": [
+		{
+			"name": "GetJournals",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "{{vault:authorization-secret}}"
+					}
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "localhost:3000/api/journals"
+			},
+			"response": []
+		}
+	]
+}
