@@ -12,50 +12,46 @@ async function seed() {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("✅ MongoDB connected for seeding");
 
-    // Bersihkan collection lama
+    // 1. Bersihkan collection lama
     await User.deleteMany({});
     await Journal.deleteMany({});
+    console.log("🗑️  Old data cleared");
 
-    // Hash password
-    const userPassword = await bcrypt.hash("user1234", 10);
-    const adminPassword = await bcrypt.hash("admin1234", 10);
-
-    // Insert users
+    // 2. Buat user dengan password hash
     const users = await User.insertMany([
       {
         username: "user",
         email: "user@gmail.com",
-        password: userPassword,
+        password: await bcrypt.hash("user1234", 10),
         role: "user",
       },
       {
         username: "admin",
         email: "admin@gmail.com",
-        password: adminPassword,
+        password: await bcrypt.hash("admin1234", 10),
         role: "admin",
       },
     ]);
 
-    console.log("✅ Users seeded");
+    console.log("✅ Users seeded:", users.map(u => u.email));
 
-    // Generate 20 random journals
-    const journals = [];
-    for (let i = 0; i < 20; i++) {
-      journals.push({
-        title: faker.lorem.sentence(5),
-        content: faker.lorem.paragraphs(2),
-        author: faker.helpers.arrayElement(users)._id, // assign random user
-      });
-    }
+    // 3. Generate 20 journals random
+    const journals = Array.from({ length: 20 }).map(() => ({
+      title: faker.lorem.sentence(5),
+      content: faker.lorem.paragraphs(2),
+      author: faker.helpers.arrayElement(users)._id, // assign random user
+    }));
 
     await Journal.insertMany(journals);
-    console.log("✅ Journals seeded (20 entries)");
+    console.log(`✅ Journals seeded (${journals.length} entries)`);
 
+    console.log("🌱 Seeding completed successfully");
     mongoose.connection.close();
-    console.log("🌱 Seeding completed and connection closed");
+    process.exit(0);
   } catch (error) {
     console.error("❌ Error seeding data:", error);
     mongoose.connection.close();
+    process.exit(1);
   }
 }
 
